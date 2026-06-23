@@ -39,7 +39,7 @@ import com.nousresearch.hermesagent.ui.theme.Dimens
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun MainNavigation(
     preferencesManager: PreferencesManager,
@@ -52,6 +52,22 @@ fun MainNavigation(
     val scope = rememberCoroutineScope()
 
     val chatState by chatViewModel.chatState.collectAsStateWithLifecycle()
+    val isInitialized = chatState.currentSessionId.isNotEmpty()
+
+    // Пока сессия не инициализирована — показываем лоадер
+    if (!isInitialized) {
+        Box(
+            modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularProgressIndicator()
+        }
+        // Запускаем инициализацию (если ещё не запущена)
+        LaunchedEffect(Unit) {
+            // init в ChatViewModel уже запущен
+        }
+        return
+    }
 
     // Determine if we should show bottom bar
     val showBottomBar = currentRoute in listOf(
