@@ -2,6 +2,12 @@
 
 **Нативный Android-клиент для Hermes Agent от Nous Research.**
 
+![Build](https://github.com/kozvits/Hermes-Agent/actions/workflows/build.yml/badge.svg?branch=main)
+![Platform](https://img.shields.io/badge/platform-Android-3DDC84?logo=android)
+![Language](https://img.shields.io/badge/language-Kotlin-7F52FF?logo=kotlin)
+![Material 3](https://img.shields.io/badge/Material-3-0061A4?logo=materialdesign)
+![License](https://img.shields.io/badge/license-MIT-green)
+
 ![Hermes Agent](app/src/main/res/drawable/ic_hermes_logo.xml)
 
 ## ✨ Возможности
@@ -67,8 +73,8 @@ com.nousresearch.hermesagent/
 
 1. **Клонируйте репозиторий:**
    ```bash
-   git clone https://github.com/NousResearch/hermes-agent-android.git
-   cd hermes-agent-android
+   git clone https://github.com/kozvits/Hermes-Agent.git
+   cd Hermes-Agent
    ```
 
 2. **Откройте в Android Studio:**
@@ -110,6 +116,16 @@ com.nousresearch.hermesagent/
 | GET | `/api/cron` | Список cron задач |
 | GET | `/api/tools` | Список инструментов |
 | GET | `/api/memory` | Записи памяти |
+
+## CI/CD
+
+При каждом пуше запускается GitHub Actions workflow, который:
+
+1. Собирает проект (`./gradlew assembleDebug`)
+2. Публикует APK как артефакт сборки
+3. На пушах в `main` запускает lint-проверки
+
+Статус последней сборки: ![Build](https://github.com/kozvits/Hermes-Agent/actions/workflows/build.yml/badge.svg?branch=main)
 
 ## 🤝 Вклад в проект
 
