@@ -9,7 +9,21 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.DrawerState
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.rememberDrawerState
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -17,6 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.*
@@ -25,7 +40,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.nousresearch.hermesagent.data.local.PreferencesManager
-import com.nousresearch.hermesagent.data.local.SessionEntity
 import com.nousresearch.hermesagent.ui.screens.chat.ChatScreen
 import com.nousresearch.hermesagent.ui.screens.chat.ChatViewModel
 import com.nousresearch.hermesagent.ui.screens.cron.CronScreen
@@ -36,7 +50,7 @@ import com.nousresearch.hermesagent.ui.screens.settings.*
 import com.nousresearch.hermesagent.ui.screens.skills.SkillsScreen
 import com.nousresearch.hermesagent.ui.screens.tools.ToolsScreen
 import com.nousresearch.hermesagent.ui.theme.Dimens
-import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
@@ -54,18 +68,17 @@ fun MainNavigation(
     val chatState by chatViewModel.chatState.collectAsStateWithLifecycle()
     val isInitialized = chatState.currentSessionId.isNotEmpty()
 
-    // Пока сессия не инициализирована — показываем лоадер
+    // Loading screen while session initializes
     if (!isInitialized) {
         Box(
-            modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
             contentAlignment = Alignment.Center,
         ) {
             CircularProgressIndicator()
         }
-        // Запускаем инициализацию (если ещё не запущена)
-        LaunchedEffect(Unit) {
-            // init в ChatViewModel уже запущен
-        }
+        LaunchedEffect(Unit) { /* ChatViewModel.init runs async */ }
         return
     }
 
@@ -79,44 +92,28 @@ fun MainNavigation(
 
     ModalNavigationDrawer(
         drawerState = drawerState,
+        gesturesEnabled = true,
         drawerContent = {
-            ModalDrawerSheet(
-                modifier = Modifier.width(Dimens.drawer_width),
-            ) {
+            ModalDrawerSheet(modifier = Modifier.width(Dimens.drawer_width)) {
                 DrawerHeader(
                     connectionStatus = chatState.connectionStatus,
                     serverUrl = chatState.serverUrl,
                 )
 
                 HorizontalDivider(modifier = Modifier.padding(horizontal = Dimens.padding_lg))
-
                 Spacer(Modifier.height(8.dp))
 
-                // Navigation items
-                Screen.drawerItems.forEach { screen ->
-                    val isSelected = currentRoute == screen.route ||
-                            (screen == Screen.Chat && currentRoute?.startsWith("chat/") == true)
-
-                    NavigationDrawerItem(
-                        icon = {
-                            Icon(
-                                imageVector = if (isSelected) screen.selectedIcon ?: screen.icon!!
-                                else screen.icon!!,
-                                contentDescription = null,
-                            )
-                        },
-                        label = { Text(screen.label, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
-                        selected = isSelected,
-                        onClick = {
-                            scope.launch { drawerState.close() }
-                            navigateToScreen(navController, screen, chatState.currentSessionId)
-                        },
-                        modifier = Modifier.padding(horizontal = Dimens.padding_sm),
-                    )
-                }
+                // Drawer items - explicit, no forEach to avoid lambda capture NPE
+                NavDrawerItem(screen = Screen.Chat, currentRoute = currentRoute, sessionId = chatState.currentSessionId, navController = navController, drawerState = drawerState, scope = scope)
+                NavDrawerItem(screen = Screen.Memory, currentRoute = currentRoute, sessionId = chatState.currentSessionId, navController = navController, drawerState = drawerState, scope = scope)
+                NavDrawerItem(screen = Screen.Sessions, currentRoute = currentRoute, sessionId = chatState.currentSessionId, navController = navController, drawerState = drawerState, scope = scope)
+                NavDrawerItem(screen = Screen.Skills, currentRoute = currentRoute, sessionId = chatState.currentSessionId, navController = navController, drawerState = drawerState, scope = scope)
+                NavDrawerItem(screen = Screen.Cron, currentRoute = currentRoute, sessionId = chatState.currentSessionId, navController = navController, drawerState = drawerState, scope = scope)
+                NavDrawerItem(screen = Screen.Providers, currentRoute = currentRoute, sessionId = chatState.currentSessionId, navController = navController, drawerState = drawerState, scope = scope)
+                NavDrawerItem(screen = Screen.Tools, currentRoute = currentRoute, sessionId = chatState.currentSessionId, navController = navController, drawerState = drawerState, scope = scope)
+                NavDrawerItem(screen = Screen.Connection, currentRoute = currentRoute, sessionId = chatState.currentSessionId, navController = navController, drawerState = drawerState, scope = scope)
 
                 Spacer(Modifier.weight(1f))
-
                 HorizontalDivider(modifier = Modifier.padding(horizontal = Dimens.padding_lg))
 
                 DrawerFooter(
@@ -132,25 +129,46 @@ fun MainNavigation(
             bottomBar = {
                 if (showBottomBar) {
                     NavigationBar {
-                        Screen.bottomNavItems.forEach { screen ->
-                            val isSelected = currentRoute == screen.route ||
-                                    (screen == Screen.Chat && currentRoute?.startsWith("chat/") == true)
+                        // Bottom nav items - inline to keep RowScope
+                        val barCurrentRoute = currentRoute
+                        val barSessionId = chatState.currentSessionId
 
-                            NavigationBarItem(
-                                icon = {
-                                    Icon(
-                                        imageVector = if (isSelected) screen.selectedIcon ?: screen.icon!!
-                                        else screen.icon!!,
-                                        contentDescription = screen.label,
-                                    )
-                                },
-                                label = { Text(screen.label) },
-                                selected = isSelected,
-                                onClick = {
-                                    navigateToScreen(navController, screen, chatState.currentSessionId)
-                                },
-                            )
-                        }
+                        // Chat
+                        val isChatSelected = barCurrentRoute == Screen.Chat.route ||
+                                (barCurrentRoute?.startsWith("chat/") == true)
+                        NavigationBarItem(
+                            icon = { BottomNavIcon(Screen.Chat, isChatSelected) },
+                            label = { Text(Screen.Chat.label) },
+                            selected = isChatSelected,
+                            onClick = { navigateToScreen(navController, Screen.Chat, barSessionId) },
+                        )
+
+                        // Memory
+                        val isMemorySelected = barCurrentRoute == Screen.Memory.route
+                        NavigationBarItem(
+                            icon = { BottomNavIcon(Screen.Memory, isMemorySelected) },
+                            label = { Text(Screen.Memory.label) },
+                            selected = isMemorySelected,
+                            onClick = { navigateToScreen(navController, Screen.Memory, barSessionId) },
+                        )
+
+                        // Sessions
+                        val isSessionsSelected = barCurrentRoute == Screen.Sessions.route
+                        NavigationBarItem(
+                            icon = { BottomNavIcon(Screen.Sessions, isSessionsSelected) },
+                            label = { Text(Screen.Sessions.label) },
+                            selected = isSessionsSelected,
+                            onClick = { navigateToScreen(navController, Screen.Sessions, barSessionId) },
+                        )
+
+                        // Settings
+                        val isSettingsSelected = barCurrentRoute == Screen.Settings.route
+                        NavigationBarItem(
+                            icon = { BottomNavIcon(Screen.Settings, isSettingsSelected) },
+                            label = { Text(Screen.Settings.label) },
+                            selected = isSettingsSelected,
+                            onClick = { navigateToScreen(navController, Screen.Settings, barSessionId) },
+                        )
                     }
                 }
             },
@@ -162,7 +180,6 @@ fun MainNavigation(
                     enterTransition = { fadeIn(animationSpec = tween(300)) },
                     exitTransition = { fadeOut(animationSpec = tween(300)) },
                 ) {
-                    // Chat
                     composable(
                         route = Screen.Chat.route,
                         arguments = listOf(navArgument("sessionId") { type = NavType.StringType }),
@@ -173,17 +190,10 @@ fun MainNavigation(
                         )
                     }
 
-                    // Memory
                     composable(route = Screen.Memory.route) {
-                        MemoryScreen(
-                            entries = emptyList(),
-                            isLoading = false,
-                            onAddEntry = { _, _ -> },
-                            onDeleteEntry = { },
-                        )
+                        MemoryScreen(entries = emptyList(), isLoading = false, onAddEntry = { _, _ -> }, onDeleteEntry = { })
                     }
 
-                    // Sessions
                     composable(route = Screen.Sessions.route) {
                         val sessions by chatViewModel.chatState.collectAsStateWithLifecycle()
                         SessionsScreen(
@@ -206,66 +216,32 @@ fun MainNavigation(
                         )
                     }
 
-                    // Settings
                     composable(route = Screen.Settings.route) {
                         SettingsScreen(
                             preferencesManager = preferencesManager,
-                            onNavigateToConnection = {
-                                navController.navigate(Screen.Connection.route)
-                            },
-                            onNavigateToProviders = {
-                                navController.navigate(Screen.Providers.route)
-                            },
-                            onNavigateToTools = {
-                                navController.navigate(Screen.Tools.route)
-                            },
-                            onNavigateToAbout = {
-                                navController.navigate(Screen.About.route)
-                            },
+                            onNavigateToConnection = { navController.navigate(Screen.Connection.route) },
+                            onNavigateToProviders = { navController.navigate(Screen.Providers.route) },
+                            onNavigateToTools = { navController.navigate(Screen.Tools.route) },
+                            onNavigateToAbout = { navController.navigate(Screen.About.route) },
                         )
                     }
 
-                    // Skills
                     composable(route = Screen.Skills.route) {
-                        SkillsScreen(
-                            skills = emptyList(),
-                            isLoading = false,
-                            onToggleSkill = { },
-                            onInstallSkill = { },
-                            onUninstallSkill = { },
-                        )
+                        SkillsScreen(skills = emptyList(), isLoading = false, onToggleSkill = { }, onInstallSkill = { }, onUninstallSkill = { })
                     }
 
-                    // Cron
                     composable(route = Screen.Cron.route) {
-                        CronScreen(
-                            jobs = emptyList(),
-                            isLoading = false,
-                            onToggle = { },
-                            onDelete = { },
-                            onCreate = { },
-                        )
+                        CronScreen(jobs = emptyList(), isLoading = false, onToggle = { }, onDelete = { }, onCreate = { })
                     }
 
-                    // Providers
                     composable(route = Screen.Providers.route) {
-                        ProvidersScreen(
-                            providers = emptyList(),
-                            isLoading = false,
-                            onActivate = { },
-                        )
+                        ProvidersScreen(providers = emptyList(), isLoading = false, onActivate = { })
                     }
 
-                    // Tools
                     composable(route = Screen.Tools.route) {
-                        ToolsScreen(
-                            tools = emptyList(),
-                            isLoading = false,
-                            onToggle = { },
-                        )
+                        ToolsScreen(tools = emptyList(), isLoading = false, onToggle = { })
                     }
 
-                    // Connection
                     composable(route = Screen.Connection.route) {
                         ConnectionScreen(
                             serverUrl = chatState.serverUrl,
@@ -275,7 +251,6 @@ fun MainNavigation(
                         )
                     }
 
-                    // About
                     composable(route = Screen.About.route) {
                         AboutScreen()
                     }
@@ -284,6 +259,67 @@ fun MainNavigation(
         }
     }
 }
+
+// ── Drawer Item ──
+
+@Composable
+fun NavDrawerItem(
+    screen: Screen,
+    currentRoute: String?,
+    sessionId: String,
+    navController: NavController,
+    drawerState: DrawerState,
+    scope: CoroutineScope,
+) {
+    val isSelected = currentRoute == screen.route ||
+            (screen == Screen.Chat && currentRoute?.startsWith("chat/") == true)
+
+    NavigationDrawerItem(
+        icon = { DrawerItemIcon(screen, isSelected) },
+        label = {
+            Text(
+                text = screen.label,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+            )
+        },
+        selected = isSelected,
+        onClick = {
+            scope.launch { drawerState.close() }
+            navigateToScreen(navController, screen, sessionId)
+        },
+        modifier = Modifier.padding(horizontal = Dimens.padding_sm),
+    )
+}
+
+// ── Drawer Item Icon ──
+
+@Composable
+fun DrawerItemIcon(screen: Screen, isSelected: Boolean) {
+    Icon(
+        imageVector = if (isSelected) {
+            screen.selectedIcon ?: screen.icon!!
+        } else {
+            screen.icon!!
+        },
+        contentDescription = null,
+    )
+}
+
+// ── Bottom Nav Icon ──
+
+@Composable
+fun BottomNavIcon(screen: Screen, isSelected: Boolean) {
+    Icon(
+        imageVector = if (isSelected) {
+            screen.selectedIcon ?: screen.icon!!
+        } else {
+            screen.icon!!
+        },
+        contentDescription = screen.label,
+    )
+}
+
+// ── Navigation Helpers ──
 
 private fun navigateToScreen(
     navController: NavController,
@@ -302,11 +338,10 @@ private fun navigateToScreen(
     }
 }
 
+// ── UI Components ──
+
 @Composable
-private fun DrawerHeader(
-    connectionStatus: String,
-    serverUrl: String,
-) {
+private fun DrawerHeader(connectionStatus: String, serverUrl: String) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -319,10 +354,7 @@ private fun DrawerHeader(
                 .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = "🤖",
-                fontSize = 28.sp,
-            )
+            Text(text = "🤖", fontSize = 28.sp)
         }
 
         Spacer(Modifier.height(Dimens.padding_lg))
@@ -376,9 +408,7 @@ private fun DrawerHeader(
 }
 
 @Composable
-private fun DrawerFooter(
-    onAbout: () -> Unit,
-) {
+private fun DrawerFooter(onAbout: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -406,5 +436,3 @@ private fun DrawerFooter(
         )
     }
 }
-
-
