@@ -134,7 +134,7 @@ fun SettingsScreen(
 
             item {
                 SettingsCard(
-                    icon = Icons.Outlined.Compact,
+                    icon = Icons.Outlined.ViewCompactAlt,
                     title = "Компактный режим",
                     subtitle = "Более плотное отображение сообщений",
                     trailing = {

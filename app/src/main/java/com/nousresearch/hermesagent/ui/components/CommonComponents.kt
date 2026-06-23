@@ -1,6 +1,10 @@
 package com.nousresearch.hermesagent.ui.components
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -75,11 +79,11 @@ fun ThinkingIndicator(modifier: Modifier = Modifier) {
         )
         dots.forEachIndexed { index, dot ->
             val delay = index * 300
-            val animatedAlpha by infiniteTransition.animateFloat(
+            val animatedAlpha: Float by infiniteTransition.animateFloat(
                 initialValue = 0.3f,
                 targetValue = 1.0f,
-                animationSpec = androidx.compose.animation.core.infiniteRepeatable(
-                    animation = androidx.compose.animation.core.tween(
+                animationSpec = infiniteRepeatable<Float>(
+                    animation = tween<Float>(
                         durationMillis = 900,
                         delayMillis = delay,
                     )

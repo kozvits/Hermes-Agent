@@ -76,7 +76,9 @@ fun ChatScreen(
                         Icon(Icons.Outlined.AddComment, contentDescription = "Новый чат")
                     }
 
-                    IconButton(onClick = { clearChat(chatState, viewModel) }) {
+                    IconButton(onClick = {
+                        if (chatState.messages.isNotEmpty()) viewModel.clearChat()
+                    }) {
                         Icon(Icons.Outlined.DeleteSweep, contentDescription = "Очистить")
                     }
                 },
@@ -332,12 +334,6 @@ private fun InfoRow(label: String, value: String) {
     }
 }
 
-@Composable
-private fun clearChat(state: ChatState, viewModel: ChatViewModel) {
-    if (state.messages.isNotEmpty()) {
-        viewModel.clearChat()
-    }
-}
 
 // ── Chat Input Bar ──
 @Composable

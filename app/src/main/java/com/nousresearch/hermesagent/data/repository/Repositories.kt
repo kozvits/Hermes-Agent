@@ -116,7 +116,7 @@ class ServerRepository @Inject constructor(
         else throw Exception("HTTP ${response.code()}: ${response.message()}")
     }
 
-    suspend fun listModels(): Result<List<ModelInfo>> = runCatching {
+    suspend fun listModels(): Result<List<Any>> = runCatching {
         val response = api.listModels()
         if (response.isSuccessful) response.body()?.data ?: emptyList()
         else throw Exception("HTTP ${response.code()}: ${response.message()}")
